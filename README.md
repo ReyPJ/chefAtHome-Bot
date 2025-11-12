@@ -4,7 +4,7 @@ Bot conversacional de WhatsApp para 5 restaurantes en México usando **WhatsApp 
 
 ## 📋 Descripción
 
-MVP funcional de un chatbot que permite a usuarios hacer pedidos completos de comida desde WhatsApp. El bot maneja todo el flujo desde la selección del restaurante hasta la confirmación del pedido, guardando la información en archivos JSON.
+Chatbot production-ready que permite a usuarios hacer pedidos completos de comida desde WhatsApp. El bot maneja todo el flujo desde la selección del restaurante hasta la confirmación del pedido, con persistencia en **PostgreSQL** y soporte para atención humana.
 
 ## 🚀 Características
 
@@ -15,24 +15,32 @@ MVP funcional de un chatbot que permite a usuarios hacer pedidos completos de co
 - ✅ Detección de clientes frecuentes
 - ✅ Cálculo de costos de envío por zonas
 - ✅ Mensajes interactivos (listas y botones)
-- ✅ Keywords especiales (MENU, CARRITO, CANCELAR, AYUDA)
-- ✅ Guardado de órdenes en JSON
-- ✅ Manejo robusto de errores
+- ✅ Keywords especiales (MENU, CARRITO, CANCELAR, AYUDA, HUMANO)
+- ✅ **Persistencia en PostgreSQL** con tablas: users, addresses, orders
+- ✅ **Soporte humano** - Los usuarios pueden solicitar hablar con un agente
+- ✅ Manejo robusto de errores con retry logic
+- ✅ Health checks mejorados con verificación de DB
+- ✅ Ready para deploy en Railway
 
 ## 🏗️ Estructura del Proyecto
 
 ```
 whatsapp-restaurant-bot/
-├── server.js              # Servidor Express + webhooks
-├── bot.js                 # Lógica del bot y flujo conversacional
+├── server.js              # Servidor Express + webhooks + health checks
+├── bot.js                 # Lógica del bot + soporte humano
 ├── userSessions.js        # Gestión de sesiones en memoria
 ├── restaurants.js         # Data mock de restaurantes y menús
-├── orders.js              # Guardar/leer órdenes en JSON
-├── utils.js               # Funciones auxiliares
+├── orders.js              # Persistencia PostgreSQL (users, addresses, orders)
+├── database.js            # Pool de conexiones PostgreSQL
+├── utils.js               # Funciones auxiliares WhatsApp API
+├── schema.sql             # Schema de base de datos
+├── setup-db.js            # Script para setup inicial de DB
+├── migrate.js             # Script para migrar orders.json a PostgreSQL
+├── railway.json           # Configuración para Railway deploy
 ├── .env.example           # Template de variables de entorno
 ├── .gitignore            # Archivos a ignorar
 ├── package.json          # Dependencias del proyecto
-├── orders.json           # Órdenes guardadas (se crea automáticamente)
+├── orders.json           # [Legacy] Órdenes antiguas (migrar con npm run migrate)
 └── README.md             # Este archivo
 ```
 
@@ -41,6 +49,8 @@ whatsapp-restaurant-bot/
 - **Node.js** v14 o superior
 - **Express** - Servidor web
 - **Axios** - Cliente HTTP para WhatsApp API
+- **PostgreSQL** - Base de datos (v12+)
+- **pg** - Driver de PostgreSQL para Node.js
 - **WhatsApp Business Cloud API** - Mensajería
 
 ## 🔧 Instalación
@@ -73,7 +83,49 @@ WHATSAPP_PHONE_ID=tu_phone_number_id
 VERIFY_TOKEN=mi_token_secreto_123
 PORT=3000
 WHATSAPP_API_URL=https://graph.facebook.com/v18.0
+NODE_ENV=development
+DATABASE_URL=postgresql://user:password@localhost:5432/whatsapp_bot
 ```
+
+### 4. Configurar PostgreSQL
+
+**Opción A: PostgreSQL Local**
+
+Instala PostgreSQL en tu máquina:
+
+```bash
+# macOS con Homebrew
+brew install postgresql
+brew services start postgresql
+
+# Ubuntu/Debian
+sudo apt-get install postgresql postgresql-contrib
+sudo systemctl start postgresql
+
+# Crear base de datos
+createdb whatsapp_bot
+```
+
+**Opción B: PostgreSQL en la nube (Railway, Supabase, etc.)**
+
+Si usas Railway o servicios similares, solo necesitas la `DATABASE_URL` que te proveen.
+
+### 5. Inicializar la base de datos
+
+```bash
+# Crear las tablas (users, addresses, orders)
+npm run db:setup
+
+# Si tienes órdenes en orders.json, migrarlas
+npm run migrate
+```
+
+El comando `db:setup` creará:
+- Tabla `users` - Información de clientes
+- Tabla `addresses` - Direcciones de entrega
+- Tabla `orders` - Órdenes completas con items
+- Funciones SQL para estadísticas
+- Triggers para auto-actualización
 
 ## 🔑 Obtener Credenciales de WhatsApp Business API
 
@@ -224,44 +276,52 @@ Durante el flujo, prueba estos comandos:
 - **MENU** - Volver a lista de restaurantes
 - **CARRITO** - Ver carrito actual
 - **CANCELAR** - Cancelar orden y limpiar sesión
+- **HUMANO** - Solicitar soporte de un agente humano
 - **AYUDA** - Ver comandos disponibles
 
 ## 📊 Verificar Órdenes
 
-Las órdenes se guardan en `orders.json`. Puedes verlas con:
+Las órdenes se guardan en **PostgreSQL**. Puedes consultarlas de varias formas:
+
+### Usando Node.js REPL
 
 ```bash
-cat orders.json
+node
+> const { getOrdersByPhone, getOrderStats } = require('./orders')
+> getOrdersByPhone('5215512345678').then(console.log)
+> getOrderStats().then(console.log)
 ```
 
-Ejemplo de orden guardada:
+### Usando psql (PostgreSQL CLI)
 
-```json
-{
-  "id": "ORD-1234567890",
-  "phone": "5215512345678",
-  "userName": "Juan Pérez",
-  "restaurant": {
-    "id": "rest_1",
-    "name": "🌮 La Taquería del Barrio"
-  },
-  "items": [
-    {
-      "id": "item_1_1",
-      "name": "Tacos de Pastor",
-      "price": 85,
-      "quantity": 2
-    }
-  ],
-  "subtotal": 170,
-  "deliveryFee": 50,
-  "total": 220,
-  "address": "Calle Reforma 123, Col. Centro",
-  "deliveryZone": 1,
-  "status": "pending_payment",
-  "createdAt": "2024-01-15T10:30:00.000Z"
-}
+```bash
+# Conectarse a la base de datos
+psql $DATABASE_URL
+
+# Ver todas las órdenes
+SELECT order_number, user_name, restaurant_name, total, status
+FROM orders
+ORDER BY created_at DESC;
+
+# Ver órdenes de un usuario
+SELECT * FROM orders WHERE phone = '5215512345678';
+
+# Ver estadísticas
+SELECT * FROM get_order_stats();
+
+# Ver órdenes que necesitan soporte humano
+SELECT order_number, user_name, status, human_support_reason
+FROM orders
+WHERE needs_human_support = true;
 ```
+
+### Endpoint de Health Check
+
+Visita `http://localhost:3000/health` para ver:
+- Estado de la base de datos
+- Pool de conexiones
+- Sesiones activas
+- Memoria y uptime
 
 ## 🏪 Restaurantes Disponibles
 
@@ -325,14 +385,98 @@ El servidor imprime logs detallados:
 - Verifica permisos de escritura en el directorio
 - El archivo `orders.json` se crea automáticamente
 
-## 📈 Próximas Fases (NO INCLUIDAS en MVP)
+## 🚂 Deploy en Railway
 
+Railway es una plataforma cloud que simplifica el deployment de aplicaciones con PostgreSQL incluido.
+
+### Paso 1: Crear cuenta en Railway
+
+1. Ve a [railway.app](https://railway.app)
+2. Inicia sesión con GitHub
+3. Crea un nuevo proyecto
+
+### Paso 2: Agregar PostgreSQL
+
+1. En tu proyecto Railway, click en "New" → "Database" → "PostgreSQL"
+2. Railway creará automáticamente la variable `DATABASE_URL`
+
+### Paso 3: Deploy del bot
+
+**Opción A: Desde GitHub (Recomendado)**
+
+1. Sube tu código a GitHub
+2. En Railway, click "New" → "GitHub Repo"
+3. Selecciona tu repositorio
+4. Railway detectará automáticamente `railway.json` y `package.json`
+
+**Opción B: Railway CLI**
+
+```bash
+# Instalar Railway CLI
+npm i -g @railway/cli
+
+# Login
+railway login
+
+# Inicializar proyecto
+railway init
+
+# Deploy
+railway up
+```
+
+### Paso 4: Configurar variables de entorno
+
+En Railway Dashboard, ve a Variables y agrega:
+
+```
+WHATSAPP_TOKEN=your_token
+WHATSAPP_PHONE_ID=your_phone_id
+VERIFY_TOKEN=your_verify_token
+NODE_ENV=production
+SKIP_CONFIRMATION=true
+```
+
+**Nota:** No agregues `DATABASE_URL`, Railway lo provee automáticamente.
+
+### Paso 5: Inicializar base de datos
+
+Una vez deployed, ejecuta en Railway terminal:
+
+```bash
+npm run db:setup
+```
+
+Si tienes datos para migrar:
+
+```bash
+npm run migrate
+```
+
+### Paso 6: Configurar webhook de WhatsApp
+
+1. Railway te dará una URL pública: `https://tu-app.up.railway.app`
+2. En Meta for Developers, configura el webhook:
+   - Callback URL: `https://tu-app.up.railway.app/webhook`
+   - Verify Token: El mismo que pusiste en variables de entorno
+
+### Verificar deployment
+
+Visita `https://tu-app.up.railway.app/health` para verificar:
+- Estado del servidor
+- Conexión a PostgreSQL
+- Memoria y uptime
+
+## 📈 Próximas Fases
+
+- [x] Base de datos PostgreSQL
+- [x] Soporte humano
+- [x] Deploy en Railway
 - [ ] Integración con pasarela de pagos (Stripe/Mercado Pago)
-- [ ] Base de datos SQL/NoSQL
 - [ ] Redis para sesiones distribuidas
 - [ ] Panel administrativo para restaurantes
-- [ ] Notificaciones a restaurantes
-- [ ] Sistema de autenticación
+- [ ] Notificaciones a restaurantes vía email/Slack
+- [ ] Sistema de autenticación para dashboard
 - [ ] Métricas y analytics
 - [ ] Multi-idioma
 
