@@ -141,6 +141,17 @@ async function handleInteractiveResponse(userId, interactive, session) {
     return;
   }
 
+  // Botones de cliente frecuente
+  if (id === 'frequent_yes') {
+    await handleFrequentCustomerResponse(userId, 'frequent_yes');
+    return;
+  }
+
+  if (id === 'frequent_no') {
+    await handleFrequentCustomerResponse(userId, 'frequent_no');
+    return;
+  }
+
   // Botones de zonas de delivery
   if (id.startsWith('zone_')) {
     const zoneNumber = parseInt(id.split('_')[1]);
