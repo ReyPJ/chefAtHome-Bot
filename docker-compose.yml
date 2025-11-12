@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: postgres:18.0
+    container_name: whatsappbot_postgres
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin123
+      POSTGRES_DB: botw_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql
+
+volumes:
+  postgres_data:
