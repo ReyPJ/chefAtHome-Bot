@@ -1,0 +1,28 @@
+{
+  "name": "whatsapp-restaurant-bot",
+  "version": "1.0.0",
+  "description": "WhatsApp chatbot para 5 restaurantes en México usando WhatsApp Business Cloud API",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "keywords": [
+    "whatsapp",
+    "bot",
+    "restaurant",
+    "chatbot",
+    "mexico"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.18.2",
+    "axios": "^1.6.2",
+    "dotenv": "^16.3.1",
+    "body-parser": "^1.20.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  }
+}
