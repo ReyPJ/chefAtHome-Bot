@@ -28,5 +28,29 @@
     "deliveryZone": 1,
     "status": "pending_payment",
     "createdAt": "2025-11-12T20:29:21.308Z"
+  },
+  {
+    "id": "ORD-1762981871075",
+    "phone": "50660793603",
+    "userName": "Reyner",
+    "restaurant": {
+      "id": "rest_1",
+      "name": "🍖 Asador Doña Tina"
+    },
+    "items": [
+      {
+        "id": "item_1_2",
+        "name": "Huevos Divorciados",
+        "price": 180,
+        "quantity": 1
+      }
+    ],
+    "subtotal": 180,
+    "deliveryFee": 50,
+    "total": 230,
+    "address": "Bosques de Fontainebleau 69, Naucalpan",
+    "deliveryZone": 1,
+    "status": "pending_payment",
+    "createdAt": "2025-11-12T21:11:11.075Z"
   }
 ]
