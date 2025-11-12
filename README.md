@@ -27,6 +27,7 @@ Chatbot production-ready que permite a usuarios hacer pedidos completos de comid
 ```
 whatsapp-restaurant-bot/
 ├── server.js              # Servidor Express + webhooks + health checks
+├── start-production.js    # Script de inicio con auto-setup para Railway
 ├── bot.js                 # Lógica del bot + soporte humano
 ├── userSessions.js        # Gestión de sesiones en memoria
 ├── restaurants.js         # Data mock de restaurantes y menús
@@ -34,9 +35,9 @@ whatsapp-restaurant-bot/
 ├── database.js            # Pool de conexiones PostgreSQL
 ├── utils.js               # Funciones auxiliares WhatsApp API
 ├── schema.sql             # Schema de base de datos
-├── setup-db.js            # Script para setup inicial de DB
+├── setup-db.js            # Script para setup inicial de DB (manual)
 ├── migrate.js             # Script para migrar orders.json a PostgreSQL
-├── railway.json           # Configuración para Railway deploy
+├── railway.json           # Configuración para Railway deploy (auto-setup)
 ├── .env.example           # Template de variables de entorno
 ├── .gitignore            # Archivos a ignorar
 ├── package.json          # Dependencias del proyecto
@@ -385,9 +386,9 @@ El servidor imprime logs detallados:
 - Verifica permisos de escritura en el directorio
 - El archivo `orders.json` se crea automáticamente
 
-## 🚂 Deploy en Railway
+## 🚂 Deploy en Railway (100% Automático)
 
-Railway es una plataforma cloud que simplifica el deployment de aplicaciones con PostgreSQL incluido.
+Railway es una plataforma cloud que simplifica el deployment de aplicaciones con PostgreSQL incluido. **La base de datos se inicializa automáticamente** al hacer deploy - no necesitas acceso a terminal.
 
 ### Paso 1: Crear cuenta en Railway
 
@@ -434,24 +435,22 @@ WHATSAPP_TOKEN=your_token
 WHATSAPP_PHONE_ID=your_phone_id
 VERIFY_TOKEN=your_verify_token
 NODE_ENV=production
-SKIP_CONFIRMATION=true
 ```
 
-**Nota:** No agregues `DATABASE_URL`, Railway lo provee automáticamente.
+**Nota:**
+- No agregues `DATABASE_URL`, Railway lo provee automáticamente
+- No necesitas `SKIP_CONFIRMATION` - la inicialización es 100% automática
 
-### Paso 5: Inicializar base de datos
+### Paso 5: Deploy automático ✨
 
-Una vez deployed, ejecuta en Railway terminal:
+¡Eso es todo! Railway automáticamente:
+1. ✅ Instala las dependencias
+2. ✅ Verifica la conexión a PostgreSQL
+3. ✅ Detecta si las tablas existen
+4. ✅ Crea las tablas automáticamente si no existen
+5. ✅ Inicia el servidor
 
-```bash
-npm run db:setup
-```
-
-Si tienes datos para migrar:
-
-```bash
-npm run migrate
-```
+**No necesitas acceso a terminal** - todo se configura automáticamente en el primer deploy.
 
 ### Paso 6: Configurar webhook de WhatsApp
 
@@ -463,9 +462,28 @@ npm run migrate
 ### Verificar deployment
 
 Visita `https://tu-app.up.railway.app/health` para verificar:
-- Estado del servidor
-- Conexión a PostgreSQL
-- Memoria y uptime
+- ✅ Estado del servidor
+- ✅ Conexión a PostgreSQL (debe mostrar "connected: true")
+- ✅ Pool de conexiones
+- ✅ Memoria y uptime
+
+Si la base de datos está inicializada correctamente, verás `"database": { "connected": true }` en el health check.
+
+### Migración de datos existentes (Opcional)
+
+Si tienes un `orders.json` con datos previos y quieres migrarlos:
+
+1. Opción A - Localmente antes del deploy:
+```bash
+# Con DATABASE_URL de Railway en tu .env local
+npm run migrate
+```
+
+2. Opción B - Después del deploy:
+   - Conecta tu Railway database localmente
+   - Ejecuta `npm run migrate`
+
+**Nota:** La migración no es necesaria para nuevas instalaciones - el bot empezará a guardar órdenes automáticamente en PostgreSQL.
 
 ## 📈 Próximas Fases
 
