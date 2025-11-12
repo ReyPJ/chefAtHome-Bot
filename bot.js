@@ -266,7 +266,7 @@ async function sendMenu(userId, restaurantId) {
 
   const rows = restaurant.menu.map(item => ({
     id: item.id,
-    title: `${item.name} - ${formatCurrency(item.price)}`,
+    title: `${item.name} - $${item.price}`,
     description: item.description.substring(0, 72) // WhatsApp limit
   }));
 

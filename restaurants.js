@@ -4,7 +4,7 @@
 const restaurants = [
   {
     id: 'rest_1',
-    name: '🌮 La Taquería del Barrio',
+    name: '🌮 La Taquería',
     description: 'Tacos auténticos al estilo tradicional',
     menu: [
       {
@@ -33,7 +33,7 @@ const restaurants = [
       },
       {
         id: 'item_1_5',
-        name: 'Orden de Quesadillas',
+        name: 'Quesadillas (3)',
         description: 'Tres quesadillas con queso Oaxaca y tu elección de guisado',
         price: 100
       },
@@ -47,7 +47,7 @@ const restaurants = [
   },
   {
     id: 'rest_2',
-    name: '🍲 Antojitos Doña Lupita',
+    name: '🍲 Antojitos Lupita',
     description: 'Comida casera mexicana como en casa',
     menu: [
       {
@@ -64,7 +64,7 @@ const restaurants = [
       },
       {
         id: 'item_2_3',
-        name: 'Chilaquiles con Pollo',
+        name: 'Chilaquiles Pollo',
         description: 'Chilaquiles verdes o rojos con pollo deshebrado',
         price: 110
       },
@@ -96,24 +96,24 @@ const restaurants = [
   },
   {
     id: 'rest_3',
-    name: '🌊 Mariscos El Pescador',
+    name: '🌊 Mariscos Pescador',
     description: 'Los mejores mariscos frescos de la región',
     menu: [
       {
         id: 'item_3_1',
-        name: 'Ceviche de Camarón',
+        name: 'Ceviche Camarón',
         description: 'Camarón fresco en jugo de limón con verduras',
         price: 180
       },
       {
         id: 'item_3_2',
-        name: 'Ceviche de Pescado',
+        name: 'Ceviche Pescado',
         description: 'Pescado blanco en limón con chile, cebolla y cilantro',
         price: 160
       },
       {
         id: 'item_3_3',
-        name: 'Cóctel de Camarón',
+        name: 'Cóctel Camarón',
         description: 'Camarones en salsa de tomate con aguacate',
         price: 190
       },
@@ -125,7 +125,7 @@ const restaurants = [
       },
       {
         id: 'item_3_5',
-        name: 'Camarones a la Diabla',
+        name: 'Camarones Diabla',
         description: 'Camarones en salsa picante con arroz y ensalada',
         price: 220
       },
@@ -139,7 +139,7 @@ const restaurants = [
   },
   {
     id: 'rest_4',
-    name: '🔥 Tortas y Burgers La Lupita',
+    name: '🔥 Tortas La Lupita',
     description: 'Las mejores tortas y hamburguesas artesanales',
     menu: [
       {
@@ -162,13 +162,13 @@ const restaurants = [
       },
       {
         id: 'item_4_4',
-        name: 'Hamburguesa Clásica',
+        name: 'Burger Clásica',
         description: 'Hamburguesa de res con queso, lechuga, tomate y papas',
         price: 120
       },
       {
         id: 'item_4_5',
-        name: 'Hamburguesa Mexicana',
+        name: 'Burger Mexicana',
         description: 'Hamburguesa con jalapeños, aguacate, queso manchego',
         price: 140
       },
@@ -182,7 +182,7 @@ const restaurants = [
   },
   {
     id: 'rest_5',
-    name: '🍕 Pizzería Don Romano',
+    name: '🍕 Pizzería Romano',
     description: 'Pizzas artesanales con toque mexicano',
     menu: [
       {
@@ -223,7 +223,7 @@ const restaurants = [
       },
       {
         id: 'item_5_7',
-        name: 'Alitas BBQ (10 pzas)',
+        name: 'Alitas BBQ (10)',
         description: 'Alitas de pollo con salsa BBQ y aderezo ranch',
         price: 150
       }
