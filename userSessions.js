@@ -16,6 +16,9 @@ function createInitialSession() {
     currentAddress: null,
     deliveryZone: null,
     deliveryFee: null,
+    humanSupportRequested: false,
+    humanSupportContext: null,
+    humanSupportRequestedAt: null,
     lastActivity: Date.now()
   };
 }

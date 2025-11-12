@@ -1,7 +1,7 @@
 // Lógica principal del bot y manejo de mensajes
 const { getSession, updateSession, clearSession } = require('./userSessions');
 const { getAllRestaurants, getRestaurantById, getCategory, getMenuItem, getDeliveryZone } = require('./restaurants');
-const { saveOrder, findSavedAddress } = require('./orders');
+const { saveOrder, findSavedAddress, markOrderNeedsHuman } = require('./orders');
 const {
   sendTextMessage,
   sendListMessage,
@@ -51,6 +51,14 @@ async function handleMessage(userId, message) {
 
       if (upperText === 'AYUDA') {
         await handleHelpKeyword(userId);
+        return;
+      }
+
+      // Keywords de soporte humano
+      if (upperText === 'HUMANO' || upperText === 'AGENTE' ||
+          upperText === 'PERSONA' || upperText.includes('AYUDA HUMANA') ||
+          upperText.includes('HABLAR CON PERSONA')) {
+        await handleHumanRequest(userId);
         return;
       }
     }
@@ -796,10 +804,79 @@ async function handleHelpKeyword(userId) {
     `📋 *MENÚ* - Ver lista de restaurantes\n` +
     `🛒 *CARRITO* - Ver tu carrito actual\n` +
     `❌ *CANCELAR* - Cancelar orden y limpiar sesión\n` +
+    `👤 *HUMANO* - Hablar con un agente\n` +
     `❓ *AYUDA* - Mostrar este mensaje\n\n` +
     `¿En qué puedo ayudarte? 😊`;
 
   await sendTextMessage(userId, helpMessage);
+}
+
+/**
+ * Maneja la solicitud de soporte humano
+ * @param {string} userId - Número de teléfono del usuario
+ */
+async function handleHumanRequest(userId) {
+  try {
+    const session = getSession(userId);
+
+    console.log(`👤 Usuario ${userId} solicitó soporte humano`);
+    console.log(`📝 Contexto de sesión:`, {
+      step: session.step,
+      userName: session.userName,
+      restaurant: session.restaurant?.name,
+      cartItems: session.cart?.length || 0
+    });
+
+    // Construir contexto para el agente humano
+    let contextMessage = `Usuario: ${session.userName || 'Desconocido'}\n`;
+    contextMessage += `Paso actual: ${session.step}\n`;
+
+    if (session.restaurant) {
+      contextMessage += `Restaurante: ${session.restaurant.name}\n`;
+    }
+
+    if (session.cart && session.cart.length > 0) {
+      contextMessage += `Items en carrito: ${session.cart.length}\n`;
+    }
+
+    if (session.currentAddress) {
+      contextMessage += `Dirección: ${session.currentAddress}\n`;
+    }
+
+    // Si hay una orden reciente (contexto), intentar marcarla
+    // Por ahora solo guardamos el contexto en la sesión
+    updateSession(userId, {
+      humanSupportRequested: true,
+      humanSupportContext: contextMessage,
+      humanSupportRequestedAt: new Date().toISOString()
+    });
+
+    // Logging especial para tracking
+    console.log(`🚨 SOPORTE HUMANO SOLICITADO 🚨`);
+    console.log(`📞 Usuario: ${userId}`);
+    console.log(`📋 Contexto:\n${contextMessage}`);
+    console.log(`⏰ Timestamp: ${new Date().toISOString()}`);
+    console.log(`=======================================`);
+
+    // Enviar mensaje al usuario
+    await sendTextMessage(
+      userId,
+      `👤 *Solicitud de Soporte Humano*\n\n` +
+      `Te estoy conectando con un agente humano. Por favor espera un momento...\n\n` +
+      `Mientras tanto, tu sesión actual está en pausa. Un agente se comunicará contigo pronto. ⏳\n\n` +
+      `Si deseas continuar con el bot, escribe *MENÚ* en cualquier momento.`
+    );
+
+    // TODO: En el futuro, aquí se puede integrar con un sistema de tickets
+    // o notificar a los agentes humanos por algún canal (Slack, email, etc.)
+
+  } catch (error) {
+    console.error('❌ Error manejando solicitud de soporte humano:', error);
+    await sendTextMessage(
+      userId,
+      '❌ Hubo un error procesando tu solicitud de soporte. Por favor intenta de nuevo escribiendo HUMANO.'
+    );
+  }
 }
 
 module.exports = {

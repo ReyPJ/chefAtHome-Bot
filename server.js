@@ -3,6 +3,8 @@ require('dotenv').config();
 const express = require('express');
 const bodyParser = require('body-parser');
 const { handleMessage } = require('./bot');
+const { checkConnection, getPoolStats } = require('./database');
+const { getSessionStats } = require('./userSessions');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -87,14 +89,49 @@ app.post('/webhook', async (req, res) => {
   }
 });
 
-// Ruta de health check
-app.get('/health', (req, res) => {
-  res.status(200).json({
-    status: 'OK',
-    timestamp: new Date().toISOString(),
-    service: 'WhatsApp Restaurant Bot',
-    version: '1.0.0'
-  });
+// Ruta de health check mejorada
+app.get('/health', async (req, res) => {
+  try {
+    // Verificar conexión a la base de datos
+    const dbConnected = await checkConnection();
+    const poolStats = getPoolStats();
+    const sessionStats = getSessionStats();
+
+    const health = {
+      status: dbConnected ? 'OK' : 'DEGRADED',
+      timestamp: new Date().toISOString(),
+      service: 'WhatsApp Restaurant Bot',
+      version: '2.0.0',
+      uptime: process.uptime(),
+      memory: {
+        used: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
+        total: Math.round(process.memoryUsage().heapTotal / 1024 / 1024),
+        unit: 'MB'
+      },
+      database: {
+        connected: dbConnected,
+        pool: {
+          total: poolStats.total,
+          idle: poolStats.idle,
+          waiting: poolStats.waiting
+        }
+      },
+      sessions: {
+        active: sessionStats.totalSessions
+      },
+      environment: process.env.NODE_ENV || 'development'
+    };
+
+    const statusCode = dbConnected ? 200 : 503;
+    res.status(statusCode).json(health);
+  } catch (error) {
+    console.error('❌ Error en health check:', error);
+    res.status(503).json({
+      status: 'ERROR',
+      timestamp: new Date().toISOString(),
+      error: error.message
+    });
+  }
 });
 
 // Ruta raíz
