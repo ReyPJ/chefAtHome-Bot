@@ -1,6 +1,6 @@
 // Lógica principal del bot y manejo de mensajes
 const { getSession, updateSession, clearSession } = require('./userSessions');
-const { getAllRestaurants, getRestaurantById, getMenuItem, getDeliveryZone } = require('./restaurants');
+const { getAllRestaurants, getRestaurantById, getCategory, getMenuItem, getDeliveryZone } = require('./restaurants');
 const { saveOrder, findSavedAddress } = require('./orders');
 const {
   sendTextMessage,
@@ -124,6 +124,12 @@ async function handleInteractiveResponse(userId, interactive, session) {
     return;
   }
 
+  // Respuesta de lista de categorías
+  if (id.startsWith('cat_')) {
+    await handleCategorySelection(userId, id);
+    return;
+  }
+
   // Respuesta de lista de menú
   if (id.startsWith('item_')) {
     await handleMenuItemSelection(userId, id);
@@ -132,7 +138,13 @@ async function handleInteractiveResponse(userId, interactive, session) {
 
   // Botones del carrito
   if (id === 'add_more') {
-    await sendMenu(userId, session.restaurant.id);
+    await sendCategories(userId, session.restaurant.id);
+    return;
+  }
+
+  // Botón volver a categorías
+  if (id === 'back_to_categories') {
+    await sendCategories(userId, session.restaurant.id);
     return;
   }
 
@@ -257,25 +269,86 @@ async function handleRestaurantSelection(userId, restaurantId) {
 
   updateSession(userId, {
     restaurant: restaurant,
-    step: 'browsing_menu'
+    step: 'browsing_categories'
   });
 
   await sendTextMessage(userId, `¡Excelente elección! ${restaurant.name} 🎉`);
-  await sendMenu(userId, restaurantId);
+  await sendCategories(userId, restaurantId);
 }
 
 /**
- * Envía el menú del restaurante como lista interactiva
+ * Envía lista de categorías del restaurante
  */
-async function sendMenu(userId, restaurantId) {
+async function sendCategories(userId, restaurantId) {
   const restaurant = getRestaurantById(restaurantId);
 
-  if (!restaurant) {
+  if (!restaurant || !restaurant.categories) {
+    await sendTextMessage(userId, '❌ Error cargando categorías. Intenta de nuevo.');
+    return;
+  }
+
+  const rows = restaurant.categories.map(category => ({
+    id: category.id,
+    title: category.name,
+    description: `${category.items.length} platillos disponibles`
+  }));
+
+  const sections = [
+    {
+      title: 'Categorías del Menú',
+      rows: rows
+    }
+  ];
+
+  await sendListMessage(
+    userId,
+    `🍽️ *${restaurant.name}*\n\n¿Qué categoría te gustaría explorar?`,
+    'Ver Categorías',
+    sections
+  );
+
+  updateSession(userId, { step: 'browsing_categories' });
+}
+
+/**
+ * Maneja la selección de una categoría
+ */
+async function handleCategorySelection(userId, categoryId) {
+  const session = getSession(userId);
+
+  if (!session.restaurant) {
+    await sendRestaurantList(userId);
+    return;
+  }
+
+  const category = getCategory(session.restaurant.id, categoryId);
+
+  if (!category) {
+    await sendTextMessage(userId, '❌ Categoría no encontrada. Por favor selecciona otra.');
+    await sendCategories(userId, session.restaurant.id);
+    return;
+  }
+
+  updateSession(userId, {
+    currentCategory: category,
+    step: 'browsing_menu'
+  });
+
+  await sendMenu(userId, session.restaurant.id, categoryId);
+}
+
+/**
+ * Envía el menú de una categoría específica como lista interactiva
+ */
+async function sendMenu(userId, restaurantId, categoryId) {
+  const category = getCategory(restaurantId, categoryId);
+
+  if (!category) {
     await sendTextMessage(userId, '❌ Error cargando el menú. Intenta de nuevo.');
     return;
   }
 
-  const rows = restaurant.menu.map(item => ({
+  const rows = category.items.map(item => ({
     id: item.id,
     title: `${item.name} - $${item.price}`,
     description: item.description.substring(0, 72) // WhatsApp limit
@@ -283,15 +356,15 @@ async function sendMenu(userId, restaurantId) {
 
   const sections = [
     {
-      title: 'Menú Disponible',
+      title: category.name,
       rows: rows
     }
   ];
 
   await sendListMessage(
     userId,
-    `🍽️ *Menú de ${restaurant.name}*\n\n¿Qué te gustaría ordenar?`,
-    'Ver Menú',
+    `🍽️ *${category.name}*\n\nSelecciona un platillo para agregarlo a tu carrito 🛒`,
+    'Ver Platillos',
     sections
   );
 
