@@ -350,8 +350,8 @@ async function sendMenu(userId, restaurantId, categoryId) {
 
   const rows = category.items.map(item => ({
     id: item.id,
-    title: `${item.name} - $${item.price}`,
-    description: item.description.substring(0, 72) // WhatsApp limit
+    title: item.name.substring(0, 24), // Solo nombre, máx 24 chars
+    description: `💰 $${item.price} MXN - ${item.description}`.substring(0, 72) // Precio + descripción, máx 72 chars
   }));
 
   const sections = [
