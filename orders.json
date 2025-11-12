@@ -1,0 +1,32 @@
+[
+  {
+    "id": "ORD-1762979361308",
+    "phone": "50660793603",
+    "userName": "Reyner",
+    "restaurant": {
+      "id": "rest_2",
+      "name": "🍲 Antojitos Lupita"
+    },
+    "items": [
+      {
+        "id": "item_2_4",
+        "name": "Pozole Rojo",
+        "price": 140,
+        "quantity": 1
+      },
+      {
+        "id": "item_2_1",
+        "name": "Enchiladas Verdes",
+        "price": 130,
+        "quantity": 1
+      }
+    ],
+    "subtotal": 270,
+    "deliveryFee": 50,
+    "total": 320,
+    "address": "Bosques de Fontainebleau 69",
+    "deliveryZone": 1,
+    "status": "pending_payment",
+    "createdAt": "2025-11-12T20:29:21.308Z"
+  }
+]
