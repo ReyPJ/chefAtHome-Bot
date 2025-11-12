@@ -5,6 +5,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
+    "start:prod": "node start-production.js",
     "dev": "nodemon server.js",
     "db:setup": "node setup-db.js",
     "migrate": "node migrate.js",
