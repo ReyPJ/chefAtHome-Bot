@@ -17,6 +17,14 @@ CREATE TYPE order_status_enum AS ENUM (
   'cancelled'
 );
 
+-- Create ENUM type for payment status
+DROP TYPE IF EXISTS payment_status_enum CASCADE;
+CREATE TYPE payment_status_enum AS ENUM (
+  'pending',
+  'completed',
+  'failed'
+);
+
 -- ============================================
 -- USERS TABLE
 -- ============================================
@@ -95,6 +103,10 @@ CREATE TABLE orders (
   needs_human_support BOOLEAN DEFAULT false,
   human_support_reason TEXT,
   human_support_requested_at TIMESTAMP,
+  stripe_payment_link_id VARCHAR(255),
+  stripe_session_id VARCHAR(255),
+  payment_status payment_status_enum DEFAULT 'pending',
+  payment_completed_at TIMESTAMP,
   created_at TIMESTAMP DEFAULT NOW(),
   updated_at TIMESTAMP DEFAULT NOW()
 );
@@ -107,6 +119,8 @@ CREATE INDEX idx_orders_status ON orders(status);
 CREATE INDEX idx_orders_needs_human_support ON orders(needs_human_support);
 CREATE INDEX idx_orders_created_at ON orders(created_at DESC);
 CREATE INDEX idx_orders_restaurant_id ON orders(restaurant_id);
+CREATE INDEX idx_orders_stripe_session_id ON orders(stripe_session_id);
+CREATE INDEX idx_orders_payment_status ON orders(payment_status);
 
 -- Índice compuesto para queries de soporte humano
 CREATE INDEX idx_orders_support_pending ON orders(needs_human_support, status)
@@ -121,6 +135,10 @@ COMMENT ON COLUMN orders.order_number IS 'Número único de orden (formato: ORD-
 COMMENT ON COLUMN orders.items IS 'Array JSON de items ordenados con {id, name, price, quantity}';
 COMMENT ON COLUMN orders.needs_human_support IS 'Indica si el cliente solicitó hablar con un agente humano';
 COMMENT ON COLUMN orders.human_support_reason IS 'Contexto o razón por la que se solicitó soporte humano';
+COMMENT ON COLUMN orders.stripe_payment_link_id IS 'ID del Payment Link generado en Stripe';
+COMMENT ON COLUMN orders.stripe_session_id IS 'ID de la sesión de checkout de Stripe para tracking de pagos';
+COMMENT ON COLUMN orders.payment_status IS 'Estado del pago: pending (pendiente), completed (completado), failed (fallido)';
+COMMENT ON COLUMN orders.payment_completed_at IS 'Timestamp de cuando se completó el pago exitosamente';
 
 -- ============================================
 -- FUNCIÓN: Obtener estadísticas de órdenes
