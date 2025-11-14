@@ -9,7 +9,8 @@
     "dev": "nodemon server.js",
     "db:setup": "node setup-db.js",
     "migrate": "node migrate.js",
-    "db:init": "npm run db:setup && npm run migrate"
+    "db:init": "npm run db:setup && npm run migrate",
+    "migrate:stripe": "node run-migration.js migrations/001_add_stripe_columns.sql"
   },
   "keywords": [
     "whatsapp",
