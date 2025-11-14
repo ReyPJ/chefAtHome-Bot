@@ -198,7 +198,8 @@ async function saveOrder(orderData) {
 
       // Formatear para compatibilidad con código existente
       const formattedOrder = {
-        id: newOrder.order_number,
+        id: newOrder.id,  // ID numérico real de la base de datos
+        order_number: newOrder.order_number,  // Número de orden legible
         phone: newOrder.phone,
         userName: newOrder.user_name,
         restaurant: {
