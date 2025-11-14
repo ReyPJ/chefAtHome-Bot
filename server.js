@@ -5,12 +5,49 @@ const bodyParser = require('body-parser');
 const { handleMessage } = require('./bot');
 const { checkConnection, getPoolStats } = require('./database');
 const { getSessionStats } = require('./userSessions');
+const { verifyWebhookSignature, handleWebhookEvent } = require('./stripe');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
 
-// Middleware
+// Webhook de Stripe - IMPORTANTE: debe estar ANTES del bodyParser.json()
+// Stripe necesita el raw body para verificar la firma del webhook
+app.post('/webhook/stripe', bodyParser.raw({ type: 'application/json' }), async (req, res) => {
+  try {
+    const signature = req.headers['stripe-signature'];
+
+    if (!signature) {
+      console.error('❌ No se recibió stripe-signature header');
+      return res.status(400).send('Missing stripe-signature header');
+    }
+
+    console.log('🔔 Webhook de Stripe recibido');
+
+    // Verificar la firma del webhook
+    let event;
+    try {
+      event = verifyWebhookSignature(req.body, signature);
+    } catch (verificationError) {
+      console.error('❌ Verificación de firma falló:', verificationError.message);
+      return res.status(400).send(`Webhook signature verification failed: ${verificationError.message}`);
+    }
+
+    // Responder rápidamente a Stripe (200 OK)
+    res.status(200).json({ received: true });
+
+    // Procesar el evento de forma asíncrona
+    console.log(`📨 Procesando evento: ${event.type}`);
+    await handleWebhookEvent(event);
+    console.log(`✅ Evento ${event.type} procesado exitosamente`);
+
+  } catch (error) {
+    console.error('❌ Error en webhook de Stripe:', error);
+    // Ya respondimos 200, así que solo loggeamos el error
+  }
+});
+
+// Middleware - después del webhook de Stripe
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
@@ -170,8 +207,9 @@ app.get('/', (req, res) => {
           <p class="status">✅ Servidor funcionando correctamente</p>
           <h2>Endpoints disponibles:</h2>
           <ul>
-            <li><code>GET /webhook</code> - Verificación de webhook</li>
+            <li><code>GET /webhook</code> - Verificación de webhook de WhatsApp</li>
             <li><code>POST /webhook</code> - Recibir mensajes de WhatsApp</li>
+            <li><code>POST /webhook/stripe</code> - Webhook de Stripe para pagos</li>
             <li><code>GET /health</code> - Health check</li>
           </ul>
           <h2>Configuración:</h2>

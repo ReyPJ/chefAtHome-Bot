@@ -14,6 +14,7 @@ const {
   extractMessageText,
   extractInteractiveResponse
 } = require('./utils');
+const { createPaymentLink } = require('./stripe');
 
 /**
  * Maneja un mensaje entrante del usuario
@@ -732,17 +733,66 @@ async function processOrder(userId) {
       deliveryZone: session.deliveryZone
     };
 
+    // Guardar la orden en la base de datos
     const savedOrder = await saveOrder(orderData);
 
     await sendTextMessage(
       userId,
       `🎉 ¡Orden confirmada exitosamente!\n\n` +
-      `📝 *Número de orden:* ${savedOrder.id}\n` +
+      `📝 *Número de orden:* ${savedOrder.order_number}\n` +
       `💰 *Total:* ${formatCurrency(total)}\n\n` +
-      `Tu orden ha sido registrada con status: *Pendiente de pago*\n\n` +
-      `En breve recibirás el link de pago. 💳\n\n` +
-      `¡Gracias por tu preferencia! 😊🍽️`
+      `Tu orden ha sido registrada. Ahora voy a generar tu link de pago... 💳`
     );
+
+    // Crear Payment Link de Stripe
+    try {
+      console.log(`💳 Generando Payment Link para orden ${savedOrder.order_number}...`);
+
+      const paymentLinkData = await createPaymentLink({
+        orderId: savedOrder.id,
+        orderNumber: savedOrder.order_number,
+        total: total,
+        phone: userId,
+        userName: session.userName,
+        restaurantName: session.restaurant.name
+      });
+
+      console.log(`✅ Payment Link generado: ${paymentLinkData.paymentLinkUrl}`);
+
+      // Enviar el payment link al usuario
+      await sendTextMessage(
+        userId,
+        `💳 *Link de Pago Generado*\n\n` +
+        `Por favor realiza el pago de *${formatCurrency(total)}* en el siguiente enlace:\n\n` +
+        `${paymentLinkData.paymentLinkUrl}\n\n` +
+        `📝 Orden: *${savedOrder.order_number}*\n` +
+        `🍽️ Restaurante: *${session.restaurant.name}*\n\n` +
+        `Una vez que completes el pago, recibirás una confirmación automática. ✅\n\n` +
+        `¡Gracias por tu preferencia! 😊`
+      );
+
+      console.log(`✅ Payment Link enviado a WhatsApp: ${userId}`);
+
+    } catch (stripeError) {
+      console.error('❌ Error generando Payment Link de Stripe:', stripeError);
+
+      // Notificar al usuario del error
+      await sendTextMessage(
+        userId,
+        `❌ Hubo un problema generando tu link de pago.\n\n` +
+        `📝 Tu orden *${savedOrder.order_number}* ha sido registrada correctamente.\n\n` +
+        `Por favor contacta a soporte escribiendo *HUMANO* para recibir el link de pago manualmente.\n\n` +
+        `Disculpa las molestias. 🙏`
+      );
+
+      // Marcar la orden para soporte humano
+      await markOrderNeedsHuman(
+        savedOrder.id,
+        `Error generando Payment Link: ${stripeError.message}`
+      );
+
+      console.log(`🚨 Orden ${savedOrder.order_number} marcada para soporte humano`);
+    }
 
     // Limpiar sesión
     clearSession(userId);
@@ -751,7 +801,7 @@ async function processOrder(userId) {
     console.error('❌ Error procesando orden:', error);
     await sendTextMessage(
       userId,
-      '❌ Hubo un error procesando tu orden. Por favor intenta de nuevo o contacta soporte.'
+      '❌ Hubo un error procesando tu orden. Por favor intenta de nuevo o contacta soporte escribiendo *HUMANO*.'
     );
   }
 }
