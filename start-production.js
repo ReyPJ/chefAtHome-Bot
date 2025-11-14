@@ -7,6 +7,7 @@ const fs = require('fs').promises;
 const path = require('path');
 
 const SCHEMA_FILE = path.join(__dirname, 'schema.sql');
+const STRIPE_MIGRATION_FILE = path.join(__dirname, 'migrations', '001_add_stripe_columns.sql');
 
 /**
  * Verifica si las tablas principales existen
@@ -63,6 +64,70 @@ async function setupDatabase() {
 }
 
 /**
+ * Verifica si las columnas de Stripe existen en la tabla orders
+ */
+async function checkStripeColumnsExist() {
+  try {
+    const result = await query(`
+      SELECT COUNT(*) as count
+      FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name = 'orders'
+        AND column_name IN ('stripe_payment_link_id', 'stripe_session_id', 'payment_status', 'payment_completed_at');
+    `);
+
+    const count = parseInt(result.rows[0].count);
+    return count === 4; // Las 4 columnas deben existir
+  } catch (error) {
+    console.error('❌ Error verificando columnas de Stripe:', error.message);
+    return false;
+  }
+}
+
+/**
+ * Ejecuta la migración de Stripe para agregar columnas necesarias
+ */
+async function runStripeMigration() {
+  try {
+    console.log('🔄 Ejecutando migración de Stripe...');
+
+    // Verificar si el archivo de migración existe
+    try {
+      await fs.access(STRIPE_MIGRATION_FILE);
+    } catch (error) {
+      console.log('⚠️  Archivo de migración no encontrado, saltando...');
+      return false;
+    }
+
+    // Leer y ejecutar la migración
+    const migrationSQL = await fs.readFile(STRIPE_MIGRATION_FILE, 'utf-8');
+    await query(migrationSQL);
+
+    console.log('✅ Migración de Stripe completada');
+
+    // Verificar columnas creadas
+    const columnCheck = await query(`
+      SELECT column_name, data_type
+      FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name = 'orders'
+        AND column_name IN ('stripe_payment_link_id', 'stripe_session_id', 'payment_status', 'payment_completed_at')
+      ORDER BY column_name;
+    `);
+
+    console.log('📊 Columnas de Stripe agregadas:');
+    columnCheck.rows.forEach(row => {
+      console.log(`  ✓ ${row.column_name} (${row.data_type})`);
+    });
+
+    return true;
+  } catch (error) {
+    console.error('❌ Error en migración de Stripe:', error);
+    throw error;
+  }
+}
+
+/**
  * Función principal de inicio
  */
 async function start() {
@@ -103,7 +168,19 @@ async function start() {
       console.log('✅ Esquema de base de datos OK\n');
     }
 
-    // 4. Iniciar el servidor
+    // 4. Verificar si las columnas de Stripe existen
+    console.log('🔍 Verificando columnas de Stripe...');
+    const stripeColumnsExist = await checkStripeColumnsExist();
+
+    if (!stripeColumnsExist) {
+      console.log('⚠️  Columnas de Stripe no encontradas - Ejecutando migración automática...\n');
+      await runStripeMigration();
+      console.log('\n✅ Migración de Stripe completada\n');
+    } else {
+      console.log('✅ Columnas de Stripe OK\n');
+    }
+
+    // 5. Iniciar el servidor
     console.log('🚀 Iniciando servidor Express...\n');
     require('./server');
 
